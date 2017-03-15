@@ -1,7 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
 using System.IO.Ports;
-using System.Timers;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -11,7 +10,7 @@ namespace TestStandControllerV2
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window, INotifyPropertyChanged
+    public partial class MainWindow : Window, INotifyPropertyChanged, IDisposable
     {
         public MainWindow()
         {
@@ -29,6 +28,7 @@ namespace TestStandControllerV2
                 info = "Error connecting to tester, check connections and restart program";
             }
 
+            // initialize UI-related fields
             info = "Please place a sample into the tester, enter a gauge, and press go";
             gauge = "0";
             timeRemaining = "Time: 60";
@@ -38,15 +38,18 @@ namespace TestStandControllerV2
             go = "Go";
         }
 
+
         private SerialPort com = new SerialPort("COM4", 115200, Parity.None, 8, StopBits.One);
         private DispatcherTimer timer;
         private int testTime = 60;
         private double maxValue = 0.0;
-        private double force;
-        private bool lockUI;
+        private double force = 0;
+        private bool testInProgress = false;
         public Brush green = new SolidColorBrush(Colors.Green);
         public Brush red = new SolidColorBrush(Colors.Red);
 
+
+        // declarations, getters, and setters for UI-related components
         private Brush _passColor;
         public Brush passColor
         {
@@ -178,9 +181,9 @@ namespace TestStandControllerV2
         
         private void goButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!lockUI)
+            if (!testInProgress)
             {
-                lockUI = true;
+                testInProgress = true;
                 // reset pass and time values
 
                 passVisible = false;
@@ -205,9 +208,14 @@ namespace TestStandControllerV2
                     //
 
                     // set gauge to force level
-                    //com.Write("\\/SPH-" + forceString + ".0\r");
+                    com.Write("\\/SPH-" + forceString + ".0\r");
+
+                    // begin tester movement upward
+                    com.Write("J\r");
+
                     info = "Testing sample at " + forceString + " pounds";
                     go = "Stop";
+                    
                     // initialize timer, and begin monitoring pull test
                     timer = new DispatcherTimer(DispatcherPriority.Send);
                     timer.Interval = new TimeSpan(0,0,1);
@@ -218,7 +226,7 @@ namespace TestStandControllerV2
                 else
                 {
                     info = "Incorrect gauge, please enter a gauge between 1 and 28";
-                    lockUI = false;
+                    testInProgress = false;
                 }
             }
             else
@@ -244,7 +252,7 @@ namespace TestStandControllerV2
                     testTime = 60;
                     info = "Please place a sample into the tester, enter a gauge, and press go";
                     go = "Go";
-                    lockUI = false;
+                    testInProgress = false;
                 }
             }
         }
@@ -252,8 +260,11 @@ namespace TestStandControllerV2
         private void checkStatus()
         {
             // request gauge reading
-            //com.Write("?\r");
-            string str = "-12.05 lbF";//com.ReadLine();
+            com.Write("?\r");
+            string str = com.ReadLine();
+
+            // test string
+            //string str = "-12.05 lbF";
 
             // if gauge reading is available
             if (str.Length > 0)
@@ -290,8 +301,33 @@ namespace TestStandControllerV2
             testTime = 60;
             info = "Please place a sample into the tester, enter a gauge, and press go";
             go = "Go";
-            lockUI = false;
+            testInProgress = false;
             // should halt test, and reset to initial position
+            // still need to figure out what command corresponds to "move tester down", and
+            // also figure out how to determine when we've reached the lower limit
         }
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    com.Close();
+                }
+                disposedValue = true;
+            }
+        }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+        }
+        #endregion
     }
 }
