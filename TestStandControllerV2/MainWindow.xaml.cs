@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.IO.Ports;
+using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -31,14 +32,14 @@ namespace TestStandControllerV2
             // initialize UI-related fields
             info = "Please place a sample into the tester, enter a gauge, and press go";
             gauge = "0";
-            timeRemaining = "Time: 60";
+            timeRemaining = "Time: 60.0";
             passVisible = false;
             passColor = new SolidColorBrush(Colors.Green);
             pass = "Pass";
             go = "Go";
         }
 
-
+        // variable declarations
         private SerialPort com = new SerialPort("COM4", 115200, Parity.None, 8, StopBits.One);
         private DispatcherTimer timer;
         private int testTime = 60;
@@ -47,7 +48,6 @@ namespace TestStandControllerV2
         private bool testInProgress = false;
         public Brush green = new SolidColorBrush(Colors.Green);
         public Brush red = new SolidColorBrush(Colors.Red);
-
 
         // declarations, getters, and setters for UI-related components
         private Brush _passColor;
@@ -134,9 +134,15 @@ namespace TestStandControllerV2
             if (PropertyChanged != null)
                 PropertyChanged(this, new PropertyChangedEventArgs(propertyName));
         }
+        // end declarations
 
-        // getForce method
-        // returns a string to be sent to the tester, given a gauge
+
+        /// <summary>
+        /// getForce method
+        /// returns a string to be sent to the tester, given a gauge string
+        /// </summary>
+        /// <param name="gauge"></param>
+        /// <returns></returns>
         private string getForce(string gauge)
         {
             // large switch statement holding all force values for given gauges
@@ -178,7 +184,14 @@ namespace TestStandControllerV2
                     return null;
             }
         }
-        
+
+        /// <summary>
+        /// goButton_Click method
+        /// event handling method that begins the test whenever the go button is clicked
+        /// method also stops the test if the button is clicked again mid-test
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void goButton_Click(object sender, RoutedEventArgs e)
         {
             if (!testInProgress)
@@ -188,7 +201,6 @@ namespace TestStandControllerV2
 
                 passVisible = false;
                 timeRemaining = "Time: 60";
-                info = "Reading Data";
                 // Read data from gaugeEntry field, and convert it to a force value
                 // Strips any leading zeros from the string, in case an operator enters "08" or similar
                 string forceString = getForce(gauge.TrimStart('0'));
@@ -197,28 +209,31 @@ namespace TestStandControllerV2
                 {
                     info = "Setting tester to " + forceString + " pounds";
 
-                    //
-                    //com.WriteLine("p");
-                    //// if machine is not at lower limit
-                    //if (com.ReadLine().Contains("DL"))
-                    //{
-                    //    // move machine crosshead downward, will stop automatically at lower limit switch
-                    //    com.WriteLine("d");
-                    //}
-                    //
+                    // halt tester
+                    com.Write("\\H\r");
+                    Thread.Sleep(50);
+
+                    // zero gauge
+                    com.Write("\\Z\r");
+                    Thread.Sleep(50);
 
                     // set gauge to force level
                     com.Write("\\/SPH-" + forceString + ".0\r");
+                    Thread.Sleep(50);
+
+                    // set gauge to peak tension mode
+                    com.Write("\\/PT\r");
+                    Thread.Sleep(50);
 
                     // begin tester movement upward
-                    com.Write("J\r");
+                    com.Write("\\J\r");
 
                     info = "Testing sample at " + forceString + " pounds";
                     go = "Stop";
-                    
+
                     // initialize timer, and begin monitoring pull test
                     timer = new DispatcherTimer(DispatcherPriority.Send);
-                    timer.Interval = new TimeSpan(0,0,1);
+                    timer.Interval = new TimeSpan(0, 0, 1);
                     timer.Tick += new EventHandler(timer_Tick);
                     timer.Start();
 
@@ -235,6 +250,13 @@ namespace TestStandControllerV2
             }
         }
 
+        /// <summary>
+        /// timer_Tick method
+        /// timer method that is called every time the timer completes, and checks test progress/results
+        /// method can end the test in a passing state, if the test has not failed when the timer ends
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void timer_Tick(object sender, EventArgs e)
         {
             checkStatus();
@@ -250,22 +272,27 @@ namespace TestStandControllerV2
                     passColor = green;
                     passVisible = true;
                     testTime = 60;
+                    maxValue = 0.0;
                     info = "Please place a sample into the tester, enter a gauge, and press go";
                     go = "Go";
                     testInProgress = false;
+                    resetTester();
                 }
             }
         }
 
+        /// <summary>
+        /// checkStatus method
+        /// helper method that reads data from the gauge, and determines what action to take based on results
+        /// method can cause the test to fail if it detects a broken wire
+        /// broken wire is detected by a significant drop in detected force
+        /// </summary>
         private void checkStatus()
         {
             // request gauge reading
             com.Write("?\r");
             string str = com.ReadLine();
-
-            // test string
-            //string str = "-12.05 lbF";
-
+            
             // if gauge reading is available
             if (str.Length > 0)
             {
@@ -274,6 +301,7 @@ namespace TestStandControllerV2
                 double value;
                 double.TryParse(str, out value);
                 value = Math.Abs(value);
+               
                 // if parse was successful
                 if (value != 0)
                 {
@@ -283,8 +311,8 @@ namespace TestStandControllerV2
                         maxValue = value;
                     }
 
-                    // if value is significantly less than max value, the wire's broken
-                    if (value < maxValue * 0.6)
+                    // if value is significantly less than max value, assume the wire's broken
+                    if (value < maxValue * 0.4)
                     {
                         failTest();
                     }
@@ -292,6 +320,11 @@ namespace TestStandControllerV2
             }
         }
 
+        /// <summary>
+        /// failTest method
+        /// helper method that handles failure conditions within the test
+        /// these conditions are a broken wire or the stop button being pressed
+        /// </summary>
         private void failTest()
         {
             timer.Stop();
@@ -299,12 +332,27 @@ namespace TestStandControllerV2
             passColor = red;
             passVisible = true;
             testTime = 60;
+            maxValue = 0.0;
             info = "Please place a sample into the tester, enter a gauge, and press go";
             go = "Go";
             testInProgress = false;
-            // should halt test, and reset to initial position
-            // still need to figure out what command corresponds to "move tester down", and
-            // also figure out how to determine when we've reached the lower limit
+            resetTester();
+
+        }
+
+        /// <summary>
+        /// resetTester method
+        /// helper method that resets the tester back to its fully-downward position
+        /// </summary>
+        private void resetTester()
+        {
+            // halt tester
+            com.Write("\\H\r");
+            Thread.Sleep(100);
+
+            // move downward
+            com.Write("\\K\r");
+            Thread.Sleep(100);
         }
 
         #region IDisposable Support
