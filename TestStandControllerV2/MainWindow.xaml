@@ -6,10 +6,15 @@
         xmlns:local="clr-namespace:TestStandControllerV2"
         xmlns:Properties="clr-namespace:TestStandControllerV2.Properties" x:Class="TestStandControllerV2.MainWindow"
         mc:Ignorable="d" Height="350" Width="525" ResizeMode="NoResize" Title="Pull Tester Controller" WindowState="Maximized">
+    <Window.ContextMenu>
+        <ContextMenu>
+            <MenuItem Header="SAE" IsCheckable="True" IsChecked="{Binding Path=SAE, Mode=TwoWay}"/>
+        </ContextMenu>
+    </Window.ContextMenu>
     <Grid>
         <Label x:Name="gaugeLabel" Content="Gauge:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" FontSize="30"/>
         <Button x:Name="goButton" Content="{Binding Path=go, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="203,10,0,0" VerticalAlignment="Top" FontSize="30" Height="50" Click="goButton_Click"/>
-        <TextBox x:Name="gaugeEntry" Text="{Binding Path=gauge, UpdateSourceTrigger=LostFocus }" HorizontalAlignment="Left" Margin="118,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="30" Width="80" Height="50"/>
+        <TextBox x:Name="gaugeEntry" Text="{Binding Path=gauge, UpdateSourceTrigger=LostFocus }" HorizontalAlignment="Left" Margin="118,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="30" Width="80" Height="50" KeyUp="gaugeEntry_KeyUp"/>
         <Label x:Name="label" HorizontalAlignment="Left" Margin="10,120,0,0" VerticalAlignment="Top" FontSize="30">
             <TextBlock x:Name="infoArea" Text="{Binding Path=info, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" TextWrapping="WrapWithOverflow" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="30"/>
         </Label>
