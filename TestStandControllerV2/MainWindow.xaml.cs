@@ -39,15 +39,19 @@ namespace TestStandControllerV2
             go = "Go";
         }
 
+        private const int testTimeVal = 2000;
+
         // variable declarations
-        private SerialPort com = new SerialPort("COM4", 115200, Parity.None, 8, StopBits.One);
+        private SerialPort com = new SerialPort("COM6", 115200, Parity.None, 8, StopBits.One);
         private DispatcherTimer timer;
-        private int testTime = 60;
+        private int testTime = testTimeVal;
         private double maxValue = 0.0;
         private double force = 0;
         private bool testInProgress = false;
         public Brush green = new SolidColorBrush(Colors.Green);
         public Brush red = new SolidColorBrush(Colors.Red);
+        enum stat { up, stop, down} 
+        private stat status = stat.up;
 
         // declarations, getters, and setters for UI-related components
         private Brush _passColor;
@@ -206,11 +210,12 @@ namespace TestStandControllerV2
                 string forceString = getForce(gauge.TrimStart('0'));
                 double.TryParse(forceString, out force);
                 if (forceString != null)
-                {
+                {   
                     info = "Setting tester to " + forceString + " pounds";
 
                     // halt tester
                     com.Write("\\H\r");
+                    status = stat.stop;
                     Thread.Sleep(50);
 
                     // zero gauge
@@ -220,23 +225,26 @@ namespace TestStandControllerV2
                     // set gauge to force level
                     com.Write("\\/SPH-" + forceString + ".0\r");
                     Thread.Sleep(50);
-
+                    /*
                     // set gauge to peak tension mode
                     com.Write("\\/PT\r");
                     Thread.Sleep(50);
-
+                    */
                     // begin tester movement upward
                     com.Write("\\J\r");
+                    status = stat.up;
 
                     info = "Testing sample at " + forceString + " pounds";
                     go = "Stop";
-
+                    
                     // initialize timer, and begin monitoring pull test
+
+
                     timer = new DispatcherTimer(DispatcherPriority.Send);
-                    timer.Interval = new TimeSpan(0, 0, 1);
+                    timer.Interval = new TimeSpan(0, 0, 0, 0, 30);
                     timer.Tick += new EventHandler(timer_Tick);
                     timer.Start();
-
+                    com.DiscardInBuffer();
                 }
                 else
                 {
@@ -260,18 +268,18 @@ namespace TestStandControllerV2
         private void timer_Tick(object sender, EventArgs e)
         {
             checkStatus();
-            // only testTime time if the max value has reached the given force value
+            // only count time if the max value has reached the given force value
             if (maxValue >= force)
             {
                 testTime--;
-                timeRemaining = "Time: " + testTime;
+                timeRemaining = "Time: " + ((double)testTime/testTimeVal)*60;
                 if (testTime <= 0)
                 {
                     timer.Stop();
                     pass = "Pass";
                     passColor = green;
                     passVisible = true;
-                    testTime = 60;
+                    testTime = testTimeVal;
                     maxValue = 0.0;
                     info = "Please place a sample into the tester, enter a gauge, and press go";
                     go = "Go";
@@ -290,34 +298,64 @@ namespace TestStandControllerV2
         private void checkStatus()
         {
             // request gauge reading
-            com.Write("?\r");
-            string str = com.ReadLine();
-            
-            // if gauge reading is available
-            if (str.Length > 0)
+            // com.Write("?\r");
+            if (com.BytesToRead > 0)
             {
-                // remove units from reading, and parse reading to a positive double
-                str = str.Remove(str.IndexOf(' '));
-                double value;
-                double.TryParse(str, out value);
-                value = Math.Abs(value);
-               
-                // if parse was successful
-                if (value != 0)
+                string str = com.ReadLine();
+                info = str + " " + com.BytesToRead;
+                // if gauge reading is available
+                if (str.Length > 0)
                 {
-                    // if value is largest seen so far, mark it as new maxValue
-                    if (value > maxValue)
-                    {
-                        maxValue = value;
-                    }
+                    // remove units from reading, and parse reading to a positive double
+                    str = str.Remove(str.IndexOf(' '));
+                    double value;
+                    double.TryParse(str, out value);
+                    value = Math.Abs(value);
 
-                    // if value is significantly less than max value, assume the wire's broken
-                    if (value < maxValue * 0.4)
+                    // if parse was successful
+                    if (value != 0)
                     {
-                        failTest();
+                        controlTester(value);
+
+                        // if value is largest seen so far, mark it as new maxValue
+                        if (value > maxValue)
+                        {
+                            maxValue = value;
+                        }
+
+                        // if value is significantly less than max value, assume the wire's broken
+                        if (value < maxValue * 0.4)
+                        {
+                            failTest();
+                        }
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// controlTester method
+        /// </summary>
+        /// <param name="value"></param>
+        private void controlTester(double value)
+        {
+            // define upper limit on force as the smaller of 10% or 1 pound
+            double hiForce = Math.Min(force * 1.1, force + 1);
+
+            // stop if moving upward and force is higher than upper limit
+            if (value > hiForce && status == stat.up)
+            {
+                com.Write("\\H\r");
+                status = stat.stop;
+            }
+
+            // start if force is lower than target force
+            if (force > value)
+            {
+                com.Write("\\J\r");
+                status = stat.up;
+            }
+
         }
 
         /// <summary>
@@ -331,7 +369,7 @@ namespace TestStandControllerV2
             pass = "Fail";
             passColor = red;
             passVisible = true;
-            testTime = 60;
+            testTime = testTimeVal;
             maxValue = 0.0;
             info = "Please place a sample into the tester, enter a gauge, and press go";
             go = "Go";
@@ -348,10 +386,12 @@ namespace TestStandControllerV2
         {
             // halt tester
             com.Write("\\H\r");
+            status = stat.stop;
             Thread.Sleep(100);
 
             // move downward
             com.Write("\\K\r");
+            status = stat.down;
             Thread.Sleep(100);
         }
 
