@@ -5,6 +5,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Threading;
+using System.Windows.Input;
 
 namespace TestStandControllerV2
 {
@@ -155,45 +156,45 @@ namespace TestStandControllerV2
         /// </summary>
         /// <param name="gauge"></param>
         /// <returns></returns>
-        private string getULForce(string gauge)
+        private double getULForce(string gauge)
         {
             // large switch statement holding all force values for given gauges
             switch (gauge)
             {
                 case "1":
-                    return "200";
+                    return 200;
                 case "2":
-                    return "180";
+                    return 180;
                 case "3":
-                    return "160";
+                    return 160;
                 case "4":
-                    return "140";
+                    return 140;
                 case "6":
-                    return "100";
+                    return 100;
                 case "8":
-                    return "90";
+                    return 90;
                 case "10":
-                    return "80";
+                    return 80;
                 case "12":
-                    return "70";
+                    return 70;
                 case "14":
-                    return "50";
+                    return 50;
                 case "16":
-                    return "30";
+                    return 30;
                 case "18":
-                    return "20";
+                    return 20;
                 case "20":
-                    return "13";
+                    return 13;
                 case "22":
-                    return "8";
+                    return 8;
                 case "24":
-                    return "5";
+                    return 5;
                 case "26":
-                    return "3";
+                    return 3;
                 case "28":
-                    return "2";
+                    return 2;
                 default:
-                    return null;
+                    return -1;
             }
         }
 
@@ -204,31 +205,31 @@ namespace TestStandControllerV2
         /// </summary>
         /// <param name="gauge"></param>
         /// <returns></returns>
-        private string getSAEForce(string gauge)
+        private double getSAEForce(string gauge)
         {
             // large switch statement holding all force values for given gauges
             switch (gauge)
             {
                 case "10":
-                    return "150";
+                    return 150;
                 case "12":
-                    return "110";
+                    return 110;
                 case "14":
-                    return "70";
+                    return 70;
                 case "16":
-                    return "50";
+                    return 50;
                 case "18":
-                    return "38";
+                    return 38;
                 case "20":
-                    return "19";
+                    return 19;
                 case "22":
-                    return "15";
+                    return 15;
                 case "24":
-                    return "10";
+                    return 10;
                 case "26":
-                    return "7";
+                    return 7;
                 default:
-                    return null;
+                    return -1;
             }
         }
 
@@ -239,9 +240,9 @@ namespace TestStandControllerV2
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void gaugeEntry_KeyUp(object sender, System.Windows.Input.KeyEventArgs e)
+        private void gaugeEntry_KeyUp(object sender, KeyEventArgs e)
         {
-            if (e.Key == System.Windows.Input.Key.Return || e.Key == System.Windows.Input.Key.Enter)
+            if (e.Key == Key.Return || e.Key == Key.Enter)
             {
                 goButton_Click(sender, new RoutedEventArgs());
             }
@@ -265,19 +266,18 @@ namespace TestStandControllerV2
                 timeRemaining = "Time: 60";
                 // Read data from gaugeEntry field, and convert it to a force value based on the current mode
                 // Strips any leading zeros from the string, in case an operator enters "08" or similar
-                string forceString;
                 if (SAE)
                 {
-                    forceString = getSAEForce(gauge.TrimStart('0'));
+                    force = getSAEForce(gauge.TrimStart('0'));
                 }
                 else
                 {
-                    forceString = getULForce(gauge.TrimStart('0'));
+                    force = getULForce(gauge.TrimStart('0'));
                 }
-                double.TryParse(forceString, out force);
-                if (forceString != null)
+                
+                if (force != -1)
                 {
-                    info = "Setting tester to " + forceString + " pounds";
+                    info = "Setting tester to " + force + " pounds";
 
                     // halt tester
                     com.Write("\\H\r");
@@ -287,8 +287,8 @@ namespace TestStandControllerV2
                     com.Write("\\Z\r");
                     Thread.Sleep(50);
 
-                    // set gauge to force level
-                    com.Write("\\/SPH-" + forceString + ".0\r");
+                    // set gauge to force level + 1
+                    com.Write("\\/SPH-" + (force + 1) + ".0\r");
                     Thread.Sleep(50);
 
                     // set gauge to peak tension mode
@@ -298,7 +298,7 @@ namespace TestStandControllerV2
                     // begin tester movement upward
                     com.Write("\\J\r");
 
-                    info = "Testing sample at " + forceString + " pounds";
+                    info = "Testing sample at " + force + " pounds";
                     go = "Stop";
 
                     // initialize timer, and begin monitoring pull test
@@ -331,7 +331,7 @@ namespace TestStandControllerV2
         {
             checkStatus();
             // only testTime time if the max value has reached the given force value
-            if (maxValue >= force - 0.05)
+            if (maxValue >= force)
             {
                 testTime--;
                 timeRemaining = "Time: " + testTime;
@@ -357,15 +357,16 @@ namespace TestStandControllerV2
             // if gauge reading is available
             if (str.Length > 0)
             {
-                // remove units from reading, and parse reading to a positive double
+                // remove units from reading
                 str = str.Remove(str.IndexOf(' '));
                 double value;
-                double.TryParse(str, out value);
-                value = Math.Abs(value);
                
-                // if parse was successful
-                if (value != 0)
+                // if parse is successful
+                if (double.TryParse(str, out value))
                 {
+                    // convert reading to a positive double
+                    value = Math.Abs(value);
+
                     // if value is largest seen so far, mark it as new maxValue
                     if (value > maxValue)
                     {
@@ -398,14 +399,9 @@ namespace TestStandControllerV2
             timer.Stop();
             pass = "Fail";
             passColor = red;
-            passVisible = true;
-            testTime = 60;
-            maxValue = 0.0;
-            info = "Please place a sample into the tester, enter a gauge, and press go";
-            go = "Go";
-            testInProgress = false;
+            // set pass to be visible only if the tester is not in SAE mode
+            passVisible = !SAE;
             resetTester();
-
         }
 
         /// <summary>
@@ -418,21 +414,25 @@ namespace TestStandControllerV2
             timer.Stop();
             pass = "Pass";
             passColor = green;
-            passVisible = true;
-            testTime = 60;
-            maxValue = 0.0;
-            info = "Please place a sample into the tester, enter a gauge, and press go";
-            go = "Go";
-            testInProgress = false;
+            // set pass to be visible only if the tester is not in SAE mode
+            passVisible = !SAE;
             resetTester();
         }
 
         /// <summary>
         /// resetTester method
-        /// helper method that resets the tester back to its fully-downward position
+        /// helper method that resets the tester back to its 
+        /// fully-downward position, and resets the UI
         /// </summary>
         private void resetTester()
         {
+            // reset UI and variables
+            testTime = 60;
+            maxValue = 0.0;
+            info = "Please place a sample into the tester, enter a gauge, and press go";
+            go = "Go";
+            testInProgress = false;
+
             // halt tester
             com.Write("\\H\r");
             Thread.Sleep(100);
