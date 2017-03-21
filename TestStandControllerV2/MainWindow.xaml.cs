@@ -19,19 +19,25 @@ namespace TestStandControllerV2
 
             InitializeComponent();
             DataContext = this;
-
-            try
+            if (SerialPort.GetPortNames().Length > 0)
             {
-                com.Open();
-                info = "Connecting to tester...";
+                try
+                {
+                    com.PortName = SerialPort.GetPortNames()[0];
+                    com.Open();
+                    info = "Please place a sample into the tester, enter a gauge, and press go";
+                }
+                catch (System.IO.IOException)
+                {
+                    info = "Error connecting to tester, check connections and restart program";
+                }
             }
-            catch (System.IO.IOException)
+            else
             {
-                info = "Error connecting to tester, check connections and restart program";
+                info = "No connection found, check connections and restart program";
             }
 
             // initialize UI-related fields
-            info = "Please place a sample into the tester, enter a gauge, and press go";
             gauge = "0";
             timeRemaining = "Time: 60.0";
             passVisible = false;
