@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TestStandControllerV2"
         xmlns:Properties="clr-namespace:TestStandControllerV2.Properties" x:Class="TestStandControllerV2.MainWindow"
-        mc:Ignorable="d" Height="350" Width="525" ResizeMode="NoResize" Title="Pull Tester Controller" WindowState="Maximized">
+        mc:Ignorable="d" Height="350" Width="525" ResizeMode="NoResize" Title="Pull Tester Controller" WindowState="Maximized" ScrollViewer.VerticalScrollBarVisibility="Disabled" WindowStyle="None">
     <Window.ContextMenu>
         <ContextMenu>
             <MenuItem Header="SAE" IsCheckable="True" IsChecked="{Binding Path=SAE, Mode=TwoWay}"/>
