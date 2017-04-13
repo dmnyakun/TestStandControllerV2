@@ -23,6 +23,7 @@ namespace TestStandControllerV2
             {
                 try
                 {
+                    // try to connect to the first serial port available
                     com.PortName = SerialPort.GetPortNames()[0];
                     com.Open();
                     info = "Please place a sample into the tester, enter a gauge, and press go";
@@ -39,6 +40,7 @@ namespace TestStandControllerV2
 
             // initialize UI-related fields
             gauge = "0";
+            labelText = "Gauge:";
             timeRemaining = "Time: 60.0";
             passVisible = false;
             passColor = new SolidColorBrush(Colors.Green);
@@ -57,17 +59,21 @@ namespace TestStandControllerV2
         public Brush red = new SolidColorBrush(Colors.Red);
 
         // begin declarations, getters, and setters for UI-related components
-        private bool _SAE;
-        public bool SAE
+        // getter/setter for force/gauge toggle option
+        private bool _nonStandard;
+        public bool nonStandard
         {
-            get { return _SAE; }
+            get { return _nonStandard; }
             set
             {
-                _SAE = value;
-                NotifyPropertyChanged("SAE");
+                _nonStandard = value;
+                NotifyPropertyChanged("nonStandard");
+                // calling the method here instead of dealing with events, since it's the same class anyways
+                resetUI();
             }
         }
 
+        // getter/setter for pass label color selection
         private Brush _passColor;
         public Brush passColor
         {
@@ -79,6 +85,7 @@ namespace TestStandControllerV2
             }
         }
 
+        // getter/setter for pass label visibility
         private bool _passVisible;
         public bool passVisible
         {
@@ -90,6 +97,7 @@ namespace TestStandControllerV2
             }
         }
 
+        // getter/setter for pass label value
         private string _pass;
         public string pass
         {
@@ -101,6 +109,7 @@ namespace TestStandControllerV2
             }
         }
 
+        // getter/setter for time remaining counter
         private string _timeRemaining;
         public string timeRemaining
         {
@@ -112,6 +121,7 @@ namespace TestStandControllerV2
             }
         }
 
+        // getter/setter for gauge text box value
         private string _gauge;
         public string gauge
         {
@@ -123,6 +133,7 @@ namespace TestStandControllerV2
             }
         }
 
+        // getter/setter for info text area value
         private string _info;
         public string info
         {
@@ -134,6 +145,7 @@ namespace TestStandControllerV2
             }
         }
 
+        // getter/setter for go button text
         private string _go;
         public string go
         {
@@ -142,6 +154,18 @@ namespace TestStandControllerV2
             {
                 _go = value;
                 NotifyPropertyChanged("go");
+            }
+        }
+
+        // getter/setter for gauge text box label value
+        private string _labelText;
+        public string labelText
+        {
+            get { return _labelText; }
+            set
+            {
+                _labelText = value;
+                NotifyPropertyChanged("labelText");
             }
         }
 
@@ -167,8 +191,6 @@ namespace TestStandControllerV2
             // large switch statement holding all force values for given gauges
             switch (gauge)
             {
-                case "1":
-                    return 200;
                 case "2":
                     return 180;
                 case "3":
@@ -199,41 +221,6 @@ namespace TestStandControllerV2
                     return 3;
                 case "28":
                     return 2;
-                default:
-                    return -1;
-            }
-        }
-
-        /// <summary>
-        /// getULForce method
-        /// returns a string to be sent to the tester, given a gauge string
-        /// return string is based on SAE AS7928
-        /// </summary>
-        /// <param name="gauge"></param>
-        /// <returns></returns>
-        private double getSAEForce(string gauge)
-        {
-            // large switch statement holding all force values for given gauges
-            switch (gauge)
-            {
-                case "10":
-                    return 150;
-                case "12":
-                    return 110;
-                case "14":
-                    return 70;
-                case "16":
-                    return 50;
-                case "18":
-                    return 38;
-                case "20":
-                    return 19;
-                case "22":
-                    return 15;
-                case "24":
-                    return 10;
-                case "26":
-                    return 7;
                 default:
                     return -1;
             }
@@ -272,9 +259,14 @@ namespace TestStandControllerV2
                 timeRemaining = "Time: 60";
                 // Read data from gaugeEntry field, and convert it to a force value based on the current mode
                 // Strips any leading zeros from the string, in case an operator enters "08" or similar
-                if (SAE)
+                if (nonStandard)
                 {
-                    force = getSAEForce(gauge.TrimStart('0'));
+                    if (!double.TryParse(gauge.TrimStart('0'), out force))
+                    {
+                        info = "Incorrect gauge, please enter a gauge between 2 and 28";
+                        testInProgress = false;
+                        return;
+                    }
                 }
                 else
                 {
@@ -316,7 +308,7 @@ namespace TestStandControllerV2
                 }
                 else
                 {
-                    info = "Incorrect gauge, please enter a gauge between 1 and 28";
+                    info = "Incorrect gauge, please enter a gauge between 2 and 28";
                     testInProgress = false;
                 }
             }
@@ -324,6 +316,24 @@ namespace TestStandControllerV2
             {
                 failTest();
             }
+        }
+
+        private void resetUI()
+        {
+            // reset UI and variables
+            if (nonStandard)
+            {
+                info = "Direct force entry mode enabled, please place a sample into \nthe tester, enter the force to test with, and press go\n\nTo disable this mode, right click and select the \"Direct Force Entry Mode\" option.";
+                labelText = "Force:";
+            } else
+            {
+                info = "Please place a sample into the tester, enter a gauge, and press go";
+                labelText = "Gauge:";
+            }
+            testTime = 60;
+            maxValue = 0.0;
+            go = "Go";
+            testInProgress = false;
         }
 
         /// <summary>
@@ -382,13 +392,6 @@ namespace TestStandControllerV2
                     // if value is significantly less than max value, assume the wire's broken
                     if (value < maxValue * 0.4)
                     {
-                        // if the max value was equal to or higher than the given force 
-                        // and the mode was SAE, pass the test instead of failing
-                        if (maxValue >= force && SAE)
-                        {
-                            passTest();
-                            return;
-                        }
                         failTest();
                     }
                 }
@@ -405,8 +408,6 @@ namespace TestStandControllerV2
             timer.Stop();
             pass = "Fail";
             passColor = red;
-            // set pass to be visible only if the tester is not in SAE mode
-            passVisible = !SAE;
             resetTester();
         }
 
@@ -420,8 +421,6 @@ namespace TestStandControllerV2
             timer.Stop();
             pass = "Pass";
             passColor = green;
-            // set pass to be visible only if the tester is not in SAE mode
-            passVisible = !SAE;
             resetTester();
         }
 
@@ -432,12 +431,8 @@ namespace TestStandControllerV2
         /// </summary>
         private void resetTester()
         {
-            // reset UI and variables
-            testTime = 60;
-            maxValue = 0.0;
-            info = "Please place a sample into the tester, enter a gauge, and press go";
-            go = "Go";
-            testInProgress = false;
+            // reset UI components
+            resetUI();
 
             // halt tester
             com.Write("\\H\r");

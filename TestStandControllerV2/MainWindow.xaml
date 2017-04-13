@@ -8,11 +8,11 @@
         mc:Ignorable="d" Height="350" Width="525" ResizeMode="NoResize" Title="Pull Tester Controller" WindowState="Maximized" ScrollViewer.VerticalScrollBarVisibility="Disabled" WindowStyle="None">
     <Window.ContextMenu>
         <ContextMenu>
-            <MenuItem Header="SAE" IsCheckable="True" IsChecked="{Binding Path=SAE, Mode=TwoWay}"/>
+            <MenuItem Header="Direct Force Entry Mode" IsCheckable="True" IsChecked="{Binding Path=nonStandard, Mode=TwoWay}"/>
         </ContextMenu>
     </Window.ContextMenu>
     <Grid>
-        <Label x:Name="gaugeLabel" Content="Gauge:" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" FontSize="30"/>
+        <Label x:Name="gaugeLabel" Content="{Binding Path=labelText, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" FontSize="30"/>
         <Button x:Name="goButton" Content="{Binding Path=go, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="203,10,0,0" VerticalAlignment="Top" FontSize="30" Height="50" Click="goButton_Click"/>
         <TextBox x:Name="gaugeEntry" Text="{Binding Path=gauge, UpdateSourceTrigger=PropertyChanged }" HorizontalAlignment="Left" Margin="118,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="30" Width="80" Height="50" KeyUp="gaugeEntry_KeyUp"/>
         <Label x:Name="label" HorizontalAlignment="Left" Margin="10,120,0,0" VerticalAlignment="Top" FontSize="30">
