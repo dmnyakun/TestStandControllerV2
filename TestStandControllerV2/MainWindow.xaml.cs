@@ -408,6 +408,7 @@ namespace TestStandControllerV2
             timer.Stop();
             pass = "Fail";
             passColor = red;
+            passVisible = true;
             resetTester();
         }
 
@@ -421,6 +422,7 @@ namespace TestStandControllerV2
             timer.Stop();
             pass = "Pass";
             passColor = green;
+            passVisible = true;
             resetTester();
         }
 
