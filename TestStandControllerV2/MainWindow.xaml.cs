@@ -26,16 +26,16 @@ namespace TestStandControllerV2
                     // try to connect to the first serial port available
                     com.PortName = SerialPort.GetPortNames()[0];
                     com.Open();
-                    info = "Please place a sample into the tester, enter a gauge, and press go";
+                    info = "Please place a sample into the tester, enter a gauge, and press go.\n\nTotal tests today: " + testCount;
                 }
                 catch (System.IO.IOException)
                 {
-                    info = "Error connecting to tester, check connections and restart program";
+                    info = "Error connecting to tester, check connections and restart program.";
                 }
             }
             else
             {
-                info = "No connection found, check connections and restart program";
+                info = "No connection found, check connections and restart program.";
             }
 
             // initialize UI-related fields
@@ -52,9 +52,11 @@ namespace TestStandControllerV2
         private SerialPort com = new SerialPort("COM4", 115200, Parity.None, 8, StopBits.One);
         private DispatcherTimer timer;
         private int testTime = 60;
+        private int testCount = 0;
         private double maxValue = 0.0;
         private double force = 0;
         private bool testInProgress = false;
+        private DateTime savedTime = DateTime.Now;
         public Brush green = new SolidColorBrush(Colors.Green);
         public Brush red = new SolidColorBrush(Colors.Red);
 
@@ -263,7 +265,7 @@ namespace TestStandControllerV2
                 {
                     if (!double.TryParse(gauge.TrimStart('0'), out force))
                     {
-                        info = "Incorrect gauge, please enter a gauge between 2 and 28";
+                        info = "Invalid force entered, please enter a force between 1 and 200.\n\nTotal tests today: " + testCount;
                         testInProgress = false;
                         return;
                     }
@@ -275,7 +277,7 @@ namespace TestStandControllerV2
                 
                 if (force != -1)
                 {
-                    info = "Setting tester to " + force + " pounds";
+                    info = "Setting tester to " + force + " pounds.\n\nTotal tests today: " + testCount;
 
                     // halt tester
                     com.Write("\\H\r");
@@ -296,7 +298,7 @@ namespace TestStandControllerV2
                     // begin tester movement upward
                     com.Write("\\J\r");
 
-                    info = "Testing sample at " + force + " pounds";
+                    info = "Testing sample at " + force + " pounds.\n\nTotal tests today: " + testCount;
                     go = "Stop";
 
                     // initialize timer, and begin monitoring pull test
@@ -308,7 +310,7 @@ namespace TestStandControllerV2
                 }
                 else
                 {
-                    info = "Incorrect gauge, please enter a gauge between 2 and 28";
+                    info = "Incorrect gauge, please enter a gauge between 2 and 28.\n\nTotal tests today: " + testCount;
                     testInProgress = false;
                 }
             }
@@ -318,22 +320,37 @@ namespace TestStandControllerV2
             }
         }
 
+        /// <summary>
+        /// resetUI method
+        /// resets UI of program after a test has completed
+        /// also handles counting how many tests have been run during the current day
+        /// </summary>
         private void resetUI()
         {
             // reset UI and variables
             if (nonStandard)
             {
-                info = "Direct force entry mode enabled, please place a sample into \nthe tester, enter the force to test with, and press go\n\nTo disable this mode, right click and select the \"Direct Force Entry Mode\" option.";
+                info = "Direct force entry mode enabled, please place a sample into \nthe tester, enter the force to test with, and press go\n\nTo disable this mode, right click and select the \"Direct Force Entry Mode\" option.\n\nTotal tests today: " + testCount;
                 labelText = "Force:";
             } else
             {
-                info = "Please place a sample into the tester, enter a gauge, and press go";
+                info = "Please place a sample into the tester, enter a gauge, and press go.\n\nTotal tests today: " + testCount;
                 labelText = "Gauge:";
             }
             testTime = 60;
             maxValue = 0.0;
             go = "Go";
             testInProgress = false;
+            // increment test count if the date hasn't changed, otherwise reset the day and count variables.
+            if (savedTime.Date != DateTime.Now.Date)
+            {
+                testCount = 0;
+                savedTime = DateTime.Now;
+            }
+            else
+            {
+                testCount++;
+            }
         }
 
         /// <summary>
