@@ -62,16 +62,59 @@ namespace TestStandControllerV2
 
         // begin declarations, getters, and setters for UI-related components
         // getter/setter for force/gauge toggle option
-        private bool _nonStandard;
-        public bool nonStandard
+        private int _mode;
+        public int mode
         {
-            get { return _nonStandard; }
+            get { return _mode; }
             set
             {
-                _nonStandard = value;
-                NotifyPropertyChanged("nonStandard");
+                _mode = value;
+                NotifyPropertyChanged("mode");
                 // calling the method here instead of dealing with events, since it's the same class anyways
                 resetUI();
+            }
+        }
+
+        // getter/setter for force/gauge toggle option
+        private bool _directForce;
+        public bool directForce
+        {
+            get { return _directForce; }
+            set
+            {
+                _directForce = value;
+                NotifyPropertyChanged("mode");
+                // calling the method here instead of dealing with events, since it's the same class anyways
+                if (directForce)
+                {
+                    mode = 1;
+                }
+                else
+                {
+                    mode = 0;
+                }
+
+            }
+        }
+        
+        // getter/setter for force/gauge toggle option
+        private bool _pullToBreak;
+        public bool pullToBreak
+        {
+            get { return _pullToBreak; }
+            set
+            {
+                _pullToBreak = value;
+                NotifyPropertyChanged("mode");
+                // calling the method here instead of dealing with events, since it's the same class anyways
+                if (pullToBreak)
+                {
+                    mode = 2;
+                }
+                else
+                {
+                    mode = 0;
+                }
             }
         }
 
@@ -261,18 +304,38 @@ namespace TestStandControllerV2
                 timeRemaining = "Time: 60";
                 // Read data from gaugeEntry field, and convert it to a force value based on the current mode
                 // Strips any leading zeros from the string, in case an operator enters "08" or similar
-                if (nonStandard)
+                switch (mode)
                 {
-                    if (!double.TryParse(gauge.TrimStart('0'), out force))
-                    {
-                        info = "Invalid force entered, please enter a force between 1 and 200.\n\nTotal tests today: " + testCount;
-                        testInProgress = false;
-                        return;
-                    }
-                }
-                else
-                {
-                    force = getULForce(gauge.TrimStart('0'));
+
+                    case 0:
+
+                        force = getULForce(gauge.TrimStart('0'));
+                        break;
+
+                    case 1:
+                        
+                        if (!double.TryParse(gauge.TrimStart('0'), out force))
+                        {
+                            info = "Invalid force entered, please enter a force between 1 and 200.\n\nTotal tests today: " + testCount;
+                            testInProgress = false;
+                            return;
+                        }
+                        break;
+                       
+                    case 2:
+
+                        if (!double.TryParse(gauge.TrimStart('0'), out force))
+                        {
+                            info = "Invalid force entered, please enter a force between 1 and 200.\n\nTotal tests today: " + testCount;
+                            testInProgress = false;
+                            return;
+                        }
+                        break;
+
+                    default:
+
+                        force = -1;
+                        break;
                 }
                 
                 if (force != -1)
@@ -328,14 +391,26 @@ namespace TestStandControllerV2
         private void resetUI()
         {
             // reset UI and variables
-            if (nonStandard)
+            switch (mode)
             {
-                info = "Direct force entry mode enabled, please place a sample into \nthe tester, enter the force to test with, and press go\n\nTo disable this mode, right click and select the \"Direct Force Entry Mode\" option.\n\nTotal tests today: " + testCount;
-                labelText = "Force:";
-            } else
-            {
-                info = "Please place a sample into the tester, enter a gauge, and press go.\n\nTotal tests today: " + testCount;
-                labelText = "Gauge:";
+
+                case 0:
+                    info = "Please place a sample into the tester, enter a gauge, and press go.\n\nTotal tests today: " + testCount;
+                    labelText = "Gauge:";
+                    break;
+
+                case 1:
+                    info = "Direct force entry mode enabled, please place a sample into \nthe tester, enter the force to test with, and press go.\n\nTo disable this mode, right click and select the \"Direct Force Entry Mode\" option.\n\nTotal tests today: " + testCount;
+                    labelText = "Force:";
+                    break;
+
+                case 2:
+                    info = "Pull-to-Break mode enabled, please place a sample into the tester,\nenter the minimum force that the wire should be able to withstand, and press go.\n\nTo disable this mode, right click and select the \"Pull-to-Break Mode\" option.\n\nTotal tests today: " + testCount;
+                    labelText = "Force:";
+                    break;
+
+                default:
+                    break;
             }
             testTime = 60;
             maxValue = 0.0;
@@ -406,10 +481,24 @@ namespace TestStandControllerV2
                         maxValue = value;
                     }
 
+                    // if value is within 5 lbs of max value and mode is pull-to-break, increase pull force
+                    if (value + 5 > maxValue && mode == 2)
+                    {
+                        com.Write("\\/SPH-" + (value + 10) + ".0\r");
+                        Thread.Sleep(50);
+                    }
+
                     // if value is significantly less than max value, assume the wire's broken
                     if (value < maxValue * 0.4)
                     {
-                        failTest();
+                        if (mode != 2 && maxValue > force)
+                        {
+                            passTest();
+                        }
+                        else
+                        {
+                            failTest();
+                        }
                     }
                 }
             }

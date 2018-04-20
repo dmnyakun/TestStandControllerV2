@@ -8,7 +8,8 @@
         mc:Ignorable="d" Height="350" Width="525" ResizeMode="NoResize" Title="Pull Tester Controller" WindowState="Maximized" ScrollViewer.VerticalScrollBarVisibility="Disabled" WindowStyle="None">
     <Window.ContextMenu>
         <ContextMenu>
-            <MenuItem Header="Direct Force Entry Mode" IsCheckable="True" IsChecked="{Binding Path=nonStandard, Mode=TwoWay}"/>
+            <MenuItem Header="Direct Force Entry Mode" IsCheckable="True" IsChecked="{Binding Path=directForce, Mode=TwoWay}"/>
+            <MenuItem Header="Pull-to-Break Mode" IsCheckable="True" IsChecked="{Binding Path=pullToBreak, Mode=TwoWay}"/>
         </ContextMenu>
     </Window.ContextMenu>
     <Grid>
