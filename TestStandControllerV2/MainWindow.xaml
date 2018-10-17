@@ -5,22 +5,51 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TestStandControllerV2"
         xmlns:Properties="clr-namespace:TestStandControllerV2.Properties" x:Class="TestStandControllerV2.MainWindow"
-        mc:Ignorable="d" Height="350" Width="525" ResizeMode="NoResize" Title="Pull Tester Controller" WindowState="Maximized" ScrollViewer.VerticalScrollBarVisibility="Disabled" WindowStyle="None">
+        mc:Ignorable="d" Height="768" Width="1366" ResizeMode="NoResize" Title="Pull Tester Controller" WindowState="Maximized" ScrollViewer.VerticalScrollBarVisibility="Disabled" WindowStyle="None">
     <Window.ContextMenu>
         <ContextMenu>
             <MenuItem Header="Direct Force Entry Mode" IsCheckable="True" IsChecked="{Binding Path=directForce, Mode=TwoWay}"/>
             <MenuItem Header="Pull-to-Break Mode" IsCheckable="True" IsChecked="{Binding Path=pullToBreak, Mode=TwoWay}"/>
         </ContextMenu>
     </Window.ContextMenu>
-    <Grid>
-        <Label x:Name="gaugeLabel" Content="{Binding Path=labelText, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" FontSize="30"/>
-        <Button x:Name="goButton" Content="{Binding Path=go, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="203,10,0,0" VerticalAlignment="Top" FontSize="30" Height="50" Click="goButton_Click"/>
-        <TextBox x:Name="gaugeEntry" Text="{Binding Path=gauge, UpdateSourceTrigger=PropertyChanged }" HorizontalAlignment="Left" Margin="118,10,0,0" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="30" Width="80" Height="50" KeyUp="gaugeEntry_KeyUp"/>
-        <Label x:Name="label" HorizontalAlignment="Left" Margin="10,120,0,0" VerticalAlignment="Top" FontSize="30">
-            <TextBlock x:Name="infoArea" Text="{Binding Path=info, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" TextWrapping="WrapWithOverflow" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="30"/>
-        </Label>
-        <Label x:Name="timeLabel" Content="{Binding Path=timeRemaining, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,65,0,0" VerticalAlignment="Top" FontSize="30" Height="50"/>
-        <Label x:Name="passLabel" Content="{Binding Path=pass, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" Visibility="{Binding Path=passVisible, Converter={StaticResource BoolToVis}, Mode=TwoWay}" Background="{Binding Path=passColor, Mode=TwoWay}" HorizontalAlignment="Left" Margin="256,10,0,0" VerticalAlignment="Top" FontSize="30" Height="50"/>
-
+    <Grid Margin="5,5,5,5">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="4*" />
+            <ColumnDefinition Width="2*" />
+        </Grid.ColumnDefinitions>
+        <!--Left side layout-->
+        <DockPanel>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                <Label x:Name="gaugeLabel" Content="{Binding Path=labelText, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30"/>
+                <TextBox x:Name="gaugeEntry" Text="{Binding Path=gauge, UpdateSourceTrigger=PropertyChanged }" HorizontalAlignment="Left" Margin="10,10,10,10" TextWrapping="Wrap" VerticalAlignment="Top" FontSize="30" Width="80" Height="50" KeyUp="gaugeEntry_KeyUp"/>
+                <Button x:Name="goButton" Content="{Binding Path=go, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30" Height="50" Click="goButton_Click"/>
+                <Label x:Name="passLabel" Content="{Binding Path=pass, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" Visibility="{Binding Path=passVisible, Converter={StaticResource BoolToVis}, Mode=TwoWay}" Background="{Binding Path=passColor, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30" Height="50"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                <Label x:Name="timeLabel" Content="{Binding Path=timeRemaining, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30" Height="50"/>
+            </StackPanel>
+            <WrapPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                <Label Grid.Column="0" x:Name="label" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30">
+                    <TextBlock Grid.Column="0"  x:Name="infoArea" Text="{Binding Path=info, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" TextWrapping="WrapWithOverflow" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="30"/>
+                </Label>
+            </WrapPanel>
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Bottom">
+                <Label x:Name="testCountLabel" Content="{Binding Path=totalTestCount, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Bottom" FontSize="30" Height="50"/>
+            </StackPanel>
+        </DockPanel>
+        
+        <!--Right side layout-->
+        <StackPanel Orientation="Vertical" Grid.Column="1">
+            <DockPanel>
+                <Label Grid.Column="1" Content="Results:" x:Name="resultHeader" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30">
+                </Label>
+                <Button x:Name="resetResultsButton" Content="Reset" HorizontalAlignment="Right" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30" Height="50" Click="resetResultsButton_Click"/>
+            </DockPanel>
+            <WrapPanel Orientation="Horizontal">
+                <Label Grid.Column="1" x:Name="result" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30">
+                    <TextBlock Grid.Column="1"  x:Name="resultsArea" Text="{Binding Path=results, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" TextWrapping="WrapWithOverflow" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="30"/>
+                </Label>
+            </WrapPanel>
+        </StackPanel>
     </Grid>
 </Window>

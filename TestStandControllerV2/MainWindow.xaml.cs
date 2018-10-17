@@ -26,7 +26,7 @@ namespace TestStandControllerV2
                     // try to connect to the first serial port available
                     com.PortName = SerialPort.GetPortNames()[0];
                     com.Open();
-                    info = "Please place a sample into the tester, enter a gauge, and press go.\n\nTotal tests today: " + testCount;
+                    info = "Please place a sample into the tester, enter a gauge, and press go.";
                 }
                 catch (System.IO.IOException)
                 {
@@ -46,6 +46,7 @@ namespace TestStandControllerV2
             passColor = new SolidColorBrush(Colors.Green);
             pass = "Pass";
             go = "Go";
+            resetUI();
         }
 
         // variable declarations
@@ -58,7 +59,9 @@ namespace TestStandControllerV2
         private bool testInProgress = false;
         private DateTime savedTime = DateTime.Now;
         public Brush green = new SolidColorBrush(Colors.Green);
+        public Brush yellow = new SolidColorBrush(Colors.Yellow);
         public Brush red = new SolidColorBrush(Colors.Red);
+        private string[] resultsArray = new string[10];
 
         // begin declarations, getters, and setters for UI-related components
         // getter/setter for mode selector
@@ -85,14 +88,7 @@ namespace TestStandControllerV2
                 _directForce = value;
                 NotifyPropertyChanged("directForce");
                 // set mode depending on toggle status
-                if (directForce)
-                {
-                    mode = 1;
-                }
-                else
-                {
-                    mode = 0;
-                }
+                setMode();
             }
         }
         
@@ -105,15 +101,7 @@ namespace TestStandControllerV2
             {
                 _pullToBreak = value;
                 NotifyPropertyChanged("pullToBreak");
-                // set mode depending on toggle status
-                if (pullToBreak)
-                {
-                    mode = 2;
-                }
-                else
-                {
-                    mode = 0;
-                }
+                setMode();
             }
         }
 
@@ -213,6 +201,30 @@ namespace TestStandControllerV2
             }
         }
 
+        // getter/setter for results string
+        private string _results;
+        public string results
+        {
+            get { return _results; }
+            set
+            {
+                _results = value;
+                NotifyPropertyChanged("results");
+            }
+        }
+
+        // getter/setter for totalTestCount string
+        private string _totalTestCount;
+        public string totalTestCount
+        {
+            get { return _totalTestCount; }
+            set
+            {
+                _totalTestCount = value;
+                NotifyPropertyChanged("totalTestCount");
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         public void NotifyPropertyChanged(string propertyName)
@@ -222,6 +234,24 @@ namespace TestStandControllerV2
         }
         // end declarations
 
+        /// setMode method
+        /// Sets mode to a value from 0-3 depending on selected options
+        /// Mode 0: normal operation
+        /// Mode 1: direct force entry
+        /// Mode 2: pull-to-break
+        /// Mode 3, direct force entry, pull-to-break
+        private void setMode()
+        {
+            mode = 0;
+            if (directForce)
+            {
+                mode += 1;
+            }
+            if (pullToBreak)
+            {
+                mode += 2;
+            }
+        }
 
         /// <summary>
         /// getULForce method
@@ -230,7 +260,7 @@ namespace TestStandControllerV2
         /// </summary>
         /// <param name="gauge"></param>
         /// <returns></returns>
-        private double getULForce(string gauge)
+        private static double getULForce(string gauge)
         {
             // large switch statement holding all force values for given gauges
             switch (gauge)
@@ -265,6 +295,41 @@ namespace TestStandControllerV2
                     return 3;
                 case "28":
                     return 2;
+                default:
+                    return -1;
+            }
+        }
+
+        /// <summary>
+        /// getSAEForce method
+        /// returns a string to be sent to the tester, given a gauge string
+        /// return string is based on SAE AS7928
+        /// </summary>
+        /// <param name="gauge"></param>
+        /// <returns></returns>
+        private static double getSAEForce(string gauge)
+        {
+            // large switch statement holding all force values for given gauges
+            switch (gauge)
+            {
+                case "10":
+                    return 150;
+                case "12":
+                    return 110;
+                case "14":
+                    return 70;
+                case "16":
+                    return 50;
+                case "18":
+                    return 38;
+                case "20":
+                    return 19;
+                case "22":
+                    return 15;
+                case "24":
+                    return 10;
+                case "26":
+                    return 7;
                 default:
                     return -1;
             }
@@ -313,12 +378,17 @@ namespace TestStandControllerV2
                         force = getULForce(gauge.TrimStart('0'));
                         break;
 
-                    case 1:
                     case 2:
-                        // direct force entry and pull-to-break modes
+                        // pull-to-break mode
+                        force = getSAEForce(gauge.TrimStart('0'));
+                        break;
+
+                    case 1:
+                    case 3:
+                        // direct force entry modes
                         if (!double.TryParse(gauge.TrimStart('0'), out force))
                         {
-                            info = "Invalid force entered, please enter a force between 1 and 200.\n\nTotal tests today: " + testCount;
+                            info = "Invalid force entered, please enter a force between 1 and 200.";
                             testInProgress = false;
                             return;
                         }
@@ -332,7 +402,7 @@ namespace TestStandControllerV2
                 
                 if (force != -1)
                 {
-                    info = "Setting tester to " + force + " pounds.\n\nTotal tests today: " + testCount;
+                    info = "Setting tester to " + force + " pounds.";
 
                     // halt tester
                     com.Write("\\H\r");
@@ -353,7 +423,7 @@ namespace TestStandControllerV2
                     // begin tester movement upward
                     com.Write("\\J\r");
 
-                    info = "Testing sample at " + force + " pounds.\n\nTotal tests today: " + testCount;
+                    info = "Testing sample at " + force + " pounds.";
                     go = "Stop";
 
                     // initialize timer, and begin monitoring pull test
@@ -365,13 +435,20 @@ namespace TestStandControllerV2
                 }
                 else
                 {
-                    info = "Incorrect gauge, please enter a gauge between 2 and 28.\n\nTotal tests today: " + testCount;
+                    if (mode == 0)
+                    {
+                        info = "Incorrect gauge, please enter a gauge between 2 and 28.";
+                    }
+                    else if (mode == 2)
+                    {
+                        info = "Incorrect gauge, please enter a gauge between 10 and 26.";
+                    }
                     testInProgress = false;
                 }
             }
             else
             {
-                failTest();
+                cancelTest();
             }
         }
 
@@ -388,19 +465,25 @@ namespace TestStandControllerV2
 
                 case 0:
                     // standard mode
-                    info = "Please place a sample into the tester, enter a gauge, and press go.\n\nTotal tests today: " + testCount;
+                    info = "Please place a sample into the tester, enter a gauge, and press go.";
                     labelText = "Gauge:";
                     break;
 
                 case 1:
                     // direct force entry mode
-                    info = "Direct force entry mode enabled, please place a sample into \nthe tester, enter the force to test with, and press go.\n\nTo disable this mode, right click and select the \"Direct Force Entry Mode\" option.\n\nTotal tests today: " + testCount;
+                    info = "Direct force entry mode enabled.\nPlease place a sample into the tester, enter a force to test to, and press go.\n\nTo disable this mode, right click and select the \"Direct Force Entry Mode\" option.";
                     labelText = "Force:";
                     break;
 
                 case 2:
                     // pull-to-break mode
-                    info = "Pull-to-Break mode enabled, please place a sample into the tester,\nenter the minimum force that the wire should be able to withstand, and press go.\n\nTo disable this mode, right click and select the \"Pull-to-Break Mode\" option.\n\nPrevious maximum pull value: " + maxValue + "\n\nTotal tests today: " + testCount;
+                    info = "Pull-to-break mode enabled.\nPlease place a sample into the tester, enter a gauge, and press go.\n\nTo disable this mode, right click and select the \"Pull-to-Break Mode\" option.";
+                    labelText = "Gauge:";
+                    break;
+
+                case 3:
+                    // pull-to-break mode with direct force entry
+                    info = "Pull-to-break with direct force entry mode enabled.\nPlease place a sample into the tester, enter a force to test to, and press go.\n\nTo disable this mode, right click and select either the \"Pull-to-Break Mode\" or \"Direct Force Entry Mode\" option.";
                     labelText = "Force:";
                     break;
 
@@ -411,9 +494,10 @@ namespace TestStandControllerV2
             maxValue = 0.0;
             go = "Go";
             // increment today's test count if a test just ended
-            if (testInProgress) {
+            if (testInProgress && pass != "Cancel") {
                 testCount++;
             }
+            totalTestCount = "Total tests today: " + testCount + ", last refresh " + DateTime.Now.ToString("t");
             testInProgress = false;
             // reset the day and count variables if the day changed
             if (savedTime.Date != DateTime.Now.Date)
@@ -421,6 +505,7 @@ namespace TestStandControllerV2
                 testCount = 0;
                 savedTime = DateTime.Now;
             }
+            results = printResult();
         }
 
         /// <summary>
@@ -433,8 +518,8 @@ namespace TestStandControllerV2
         private void timer_Tick(object sender, EventArgs e)
         {
             checkStatus();
-            // only testTime time if the max value has reached the given force value
-            if (maxValue >= force)
+            // only decrement time if the max value has reached the given force value
+            if (maxValue >= force && mode < 2)
             {
                 testTime--;
                 timeRemaining = "Time: " + testTime;
@@ -455,6 +540,7 @@ namespace TestStandControllerV2
         {
             // request gauge reading
             com.Write("?\r");
+            Thread.Sleep(50);
             string str = com.ReadLine();
             
             // if gauge reading is available
@@ -476,25 +562,32 @@ namespace TestStandControllerV2
                         maxValue = value;
                     }
 
-                    // if value is within 5 lbs of max value and mode is pull-to-break, increase pull force
-                    if (value + 5 > maxValue && mode == 2)
+                    const int valueAdd = 5;
+                    // if value is within valueAdd lbs of max value and mode is pull-to-break, increase pull force
+                    if (value + valueAdd > maxValue && (mode == 2 || mode == 3))
                     {
-                        if (value >= force)
+                        if (value + valueAdd >= force)
                         {
-                            com.Write("\\/SPH-" + (value + 5) + ".0\r");
+                            com.Write("\\H\r");
+                            Thread.Sleep(50);
+                            com.Write("\\/SPH-" + (value + valueAdd) + ".0\r");
+                            Thread.Sleep(50);
+                            com.Write("\\J\r");
                             Thread.Sleep(50);
                         }
                         else
                         {
-                            com.Write("\\/SPH-" + (force + 1) + ".0\r");
+                            //com.Write("\\/SPH-" + (force + 1) + ".0\r");
                             Thread.Sleep(50);
                         }
                     }
 
-                    // if value is significantly less than max value, assume the wire's broken
-                    if (value < maxValue * 0.4)
+                    // if value is significantly less than max value, and the value's greater than 
+                    // 10 % of the required force, assume the wire's broken
+                    if (value < maxValue * 0.4 && value > force / 10)
                     {
-                        if (mode != 2 && maxValue > force)
+                        // check if we reached the required value in pull-to-break test modes
+                        if ((mode == 2 || mode == 3) && maxValue > force)
                         {
                             passTest();
                         }
@@ -509,8 +602,7 @@ namespace TestStandControllerV2
 
         /// <summary>
         /// failTest method
-        /// helper method that handles failure conditions within the test
-        /// these conditions are a broken wire or the stop button being pressed
+        /// helper method that handles failure conditions within the test such as a broken wire
         /// </summary>
         private void failTest()
         {
@@ -518,13 +610,26 @@ namespace TestStandControllerV2
             pass = "Fail";
             passColor = red;
             passVisible = true;
+            recordResult();
+            resetTester();
+        }
+
+        /// <summary>
+        /// cancelTest method
+        /// helper method that handles cancellation of the test via stop button
+        /// </summary>
+        private void cancelTest()
+        {
+            timer.Stop();
+            pass = "Cancel";
+            passColor = yellow;
+            passVisible = true;
             resetTester();
         }
 
         /// <summary>
         /// passTest method
-        /// helper method that handles passing a test, and resets everything 
-        /// so the next test can be run
+        /// helper method that handles passing a test
         /// </summary>
         private void passTest()
         {
@@ -532,8 +637,74 @@ namespace TestStandControllerV2
             pass = "Pass";
             passColor = green;
             passVisible = true;
+            recordResult();
             resetTester();
         }
+
+        /// <summary>
+        /// recordResult method
+        /// helper method that records the last result, and stores it in an array
+        /// </summary>
+        /// 
+        private void recordResult()
+        {
+            for (int i = resultsArray.Length - 1; i > 0; i--)
+            {
+                resultsArray[i] = resultsArray[i - 1];
+            }
+            switch (mode)
+            {
+
+                case 0:
+                    // record pass/fail in standard test, along with gauge
+                    resultsArray[0] = DateTime.Now.ToString("t") + " - " + pass + ": " + gauge.TrimStart('0') + " AWG";
+                    break;
+
+                case 1:
+                    // record pass/fail in direct force test, along with required force
+                    resultsArray[0] = DateTime.Now.ToString("t") + " - " + pass + ": " + gauge.TrimStart('0') + " lbs.";
+                    break;
+
+                case 2:
+                case 3:
+                    // record required and reached values in pull-to-break tests
+                    resultsArray[0] = DateTime.Now.ToString("t") + " - " + pass + ": " + maxValue + "/" + force + " lbs.";
+                    break;
+
+            }
+        }
+
+
+        /// <summary>
+        /// printResult method
+        /// returns a formatted version of the results array, to be printed to the screen
+        /// </summary>
+        /// <returns></returns>
+        private string printResult()
+        {
+            string ret = "";
+            for (int i = 0; i < resultsArray.Length; i++)
+            {
+                ret += resultsArray[i] + "\n";
+            }
+            return ret;
+        }
+
+        /// <summary>
+        /// resetResultsButton_Click method
+        /// event handling method that resets the results array whenever the reset button is clicked
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void resetResultsButton_Click(object sender, RoutedEventArgs e)
+        {
+            for (int i = 0; i < resultsArray.Length; i++)
+            {
+                resultsArray[i] = "";
+            }
+            resetUI();
+        }
+
 
         /// <summary>
         /// resetTester method
@@ -544,6 +715,7 @@ namespace TestStandControllerV2
         {
             // reset UI components
             resetUI();
+            Thread.Sleep(100);
 
             // halt tester
             com.Write("\\H\r");
