@@ -40,12 +40,16 @@ namespace TestStandControllerV2
 
             // initialize UI-related fields
             gauge = "0";
-            labelText = "Gauge:";
-            timeRemaining = "Time: 60.0";
+            labelText = gaugeText;
+            timeRemaining = "Time: 60";
+            timeVisible = false;
             passVisible = false;
-            passColor = new SolidColorBrush(Colors.Green);
-            pass = "Pass";
-            go = "Go";
+            passColor = passedTest;
+            pass = passedTestText;
+            go = readyToStart;
+            infoBackgroundColor = blank;
+            forceBackgroundColor = forceColor;
+            breakBackgroundColor = breakColor;
             resetUI();
         }
 
@@ -58,10 +62,21 @@ namespace TestStandControllerV2
         private double force = 0;
         private bool testInProgress = false;
         private DateTime savedTime = DateTime.Now;
-        public Brush green = new SolidColorBrush(Colors.Green);
-        public Brush yellow = new SolidColorBrush(Colors.Yellow);
-        public Brush red = new SolidColorBrush(Colors.Red);
-        private string[] resultsArray = new string[10];
+        public static Brush passedTest = new SolidColorBrush(Colors.Green);
+        public static Brush canceledTest = new SolidColorBrush(Colors.Yellow);
+        public static Brush failedTest = new SolidColorBrush(Colors.Red);
+        public static SolidColorBrush breakColor = new SolidColorBrush(Color.FromArgb(160, 255, 152, 0)); // orange
+        public static SolidColorBrush forceColor = new SolidColorBrush(Color.FromArgb(160, 152, 181, 229)); // blue
+        public static SolidColorBrush comboColor = new SolidColorBrush(Color.FromArgb(160, 170, 102, 204)); // purpleish
+        public static SolidColorBrush blank = new SolidColorBrush(Colors.White);
+        private string passedTestText = "Pass";
+        private string canceledTestText = "Cancel";
+        private string failedTestText = "Failed";
+        private string readyToStart = "Go";
+        private string readyToStop = "Stop";
+        private string gaugeText = "Gauge:";
+        private string forceText = "Force:";
+        private string[] resultsArray = new string[15];
 
         // begin declarations, getters, and setters for UI-related components
         // getter/setter for mode selector
@@ -89,6 +104,7 @@ namespace TestStandControllerV2
                 NotifyPropertyChanged("directForce");
                 // set mode depending on toggle status
                 setMode();
+                setBackgroundColor();
             }
         }
         
@@ -102,6 +118,7 @@ namespace TestStandControllerV2
                 _pullToBreak = value;
                 NotifyPropertyChanged("pullToBreak");
                 setMode();
+                setBackgroundColor();
             }
         }
 
@@ -138,6 +155,18 @@ namespace TestStandControllerV2
             {
                 _pass = value;
                 NotifyPropertyChanged("pass");
+            }
+        }
+
+        // getter/setter for time remaining visibility
+        private bool _timeVisible;
+        public bool timeVisible
+        {
+            get { return _timeVisible; }
+            set
+            {
+                _timeVisible = value;
+                NotifyPropertyChanged("timeVisible");
             }
         }
 
@@ -224,6 +253,42 @@ namespace TestStandControllerV2
                 NotifyPropertyChanged("totalTestCount");
             }
         }
+        
+        // getter/setter for background color selection
+        private SolidColorBrush _infoBackgroundColor;
+        public SolidColorBrush infoBackgroundColor
+        {
+            get { return _infoBackgroundColor; }
+            set
+            {
+                _infoBackgroundColor = value;
+                NotifyPropertyChanged("infoBackgroundColor");
+            }
+        }
+
+        // getter/setter for background color selection
+        private SolidColorBrush _breakBackgroundColor;
+        public SolidColorBrush breakBackgroundColor
+        {
+            get { return _breakBackgroundColor; }
+            set
+            {
+                _breakBackgroundColor = value;
+                NotifyPropertyChanged("breakBackgroundColor");
+            }
+        }
+
+        // getter/setter for background color selection
+        private SolidColorBrush _forceBackgroundColor;
+        public SolidColorBrush forceBackgroundColor
+        {
+            get { return _forceBackgroundColor; }
+            set
+            {
+                _forceBackgroundColor = value;
+                NotifyPropertyChanged("forceBackgroundColor");
+            }
+        }
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -250,6 +315,38 @@ namespace TestStandControllerV2
             if (pullToBreak)
             {
                 mode += 2;
+            }
+        }
+
+        /// setBackgroundColor method
+        /// Sets background color of the main screen depending on mode
+        /// Pull-to-break modes get an orange background, and normal modes get a white one
+        /// Mode 0: normal operation
+        /// Mode 1: direct force entry
+        /// Mode 2: pull-to-break
+        /// Mode 3, direct force entry, pull-to-break
+        private void setBackgroundColor()
+        {
+            switch (mode)
+            {
+                case 3:
+                    infoBackgroundColor = comboColor;
+                    break;
+
+                case 2:
+                    infoBackgroundColor = breakColor;
+                    break;
+
+                case 1:
+                    infoBackgroundColor = forceColor;
+                    break;
+
+                case 0:
+
+                default:
+                    infoBackgroundColor = blank;
+                    break;
+
             }
         }
 
@@ -367,6 +464,10 @@ namespace TestStandControllerV2
                 // reset pass and time values
                 passVisible = false;
                 timeRemaining = "Time: 60";
+                if (mode < 2)
+                {
+                    timeVisible = true;
+                }
                 
                 // Read data from gaugeEntry field, and convert it to a force value based on the current mode
                 // Strips any leading zeros from the string, in case an operator enters "08" or similar
@@ -402,6 +503,10 @@ namespace TestStandControllerV2
                 
                 if (force != -1)
                 {
+                    // clamp allowed values to be between 1 and 200 lbs, to prevent damage to the tester
+                    force = Math.Min(force, 200);
+                    force = Math.Max(force, 1);
+
                     info = "Setting tester to " + force + " pounds.";
 
                     // halt tester
@@ -424,7 +529,7 @@ namespace TestStandControllerV2
                     com.Write("\\J\r");
 
                     info = "Testing sample at " + force + " pounds.";
-                    go = "Stop";
+                    go = readyToStop;
 
                     // initialize timer, and begin monitoring pull test
                     timer = new DispatcherTimer(DispatcherPriority.Send);
@@ -465,26 +570,26 @@ namespace TestStandControllerV2
 
                 case 0:
                     // standard mode
-                    info = "Please place a sample into the tester, enter a gauge, and press go.";
-                    labelText = "Gauge:";
+                    info = "Please place a sample into the tester, enter a gauge, and press go.\n\nSupported gauges: 2-28 AWG";
+                    labelText = gaugeText;
                     break;
 
                 case 1:
                     // direct force entry mode
-                    info = "Direct force entry mode enabled.\nPlease place a sample into the tester, enter a force to test to, and press go.\n\nTo disable this mode, right click and select the \"Direct Force Entry Mode\" option.";
-                    labelText = "Force:";
+                    info = "Direct force entry mode enabled.\nPlease place a sample into the tester, enter a force to test to, and press go.\n\nTo disable this mode, right click and select the \"Direct Force Entry Mode\" option.\n\nSupported forces: 1-200 lbs.";
+                    labelText = forceText;
                     break;
 
                 case 2:
                     // pull-to-break mode
-                    info = "Pull-to-break mode enabled.\nPlease place a sample into the tester, enter a gauge, and press go.\n\nTo disable this mode, right click and select the \"Pull-to-Break Mode\" option.";
-                    labelText = "Gauge:";
+                    info = "Pull-to-break mode enabled.\nPlease place a sample into the tester, enter a gauge, and press go.\n\nTo disable this mode, right click and select the \"Pull-to-Break Mode\" option.\n\nSupported gauges: 10-26 AWG";
+                    labelText = gaugeText;
                     break;
 
                 case 3:
                     // pull-to-break mode with direct force entry
-                    info = "Pull-to-break with direct force entry mode enabled.\nPlease place a sample into the tester, enter a force to test to, and press go.\n\nTo disable this mode, right click and select either the \"Pull-to-Break Mode\" or \"Direct Force Entry Mode\" option.";
-                    labelText = "Force:";
+                    info = "Pull-to-break with direct force entry mode enabled.\nPlease place a sample into the tester, enter a force to test to, and press go.\n\nTo disable this mode, right click and select either the \"Pull-to-Break Mode\" or \"Direct Force Entry Mode\" option.\n\nSupported forces: 1-200 lbs.";
+                    labelText = forceText;
                     break;
 
                 default:
@@ -492,13 +597,14 @@ namespace TestStandControllerV2
             }
             testTime = 60;
             maxValue = 0.0;
-            go = "Go";
+            go = readyToStart;
             // increment today's test count if a test just ended
-            if (testInProgress && pass != "Cancel") {
+            if (testInProgress && pass != canceledTestText) {
                 testCount++;
             }
             totalTestCount = "Total tests today: " + testCount + ", last refresh " + DateTime.Now.ToString("t");
             testInProgress = false;
+            timeVisible = false;
             // reset the day and count variables if the day changed
             if (savedTime.Date != DateTime.Now.Date)
             {
@@ -519,7 +625,7 @@ namespace TestStandControllerV2
         {
             checkStatus();
             // only decrement time if the max value has reached the given force value
-            if (maxValue >= force && mode < 2)
+            if (maxValue >= force && timeVisible)
             {
                 testTime--;
                 timeRemaining = "Time: " + testTime;
@@ -575,16 +681,11 @@ namespace TestStandControllerV2
                             com.Write("\\J\r");
                             Thread.Sleep(50);
                         }
-                        else
-                        {
-                            //com.Write("\\/SPH-" + (force + 1) + ".0\r");
-                            Thread.Sleep(50);
-                        }
                     }
 
-                    // if value is significantly less than max value, and the value's greater than 
-                    // 10 % of the required force, assume the wire's broken
-                    if (value < maxValue * 0.4 && value > force / 10)
+                    // if value is significantly less than max value, and the maxValue's greater than 
+                    // 10% of the required force, assume the wire's broken
+                    if (value < maxValue * 0.4 && maxValue > force / 10)
                     {
                         // check if we reached the required value in pull-to-break test modes
                         if ((mode == 2 || mode == 3) && maxValue > force)
@@ -607,8 +708,8 @@ namespace TestStandControllerV2
         private void failTest()
         {
             timer.Stop();
-            pass = "Fail";
-            passColor = red;
+            pass = failedTestText;
+            passColor = failedTest;
             passVisible = true;
             recordResult();
             resetTester();
@@ -621,8 +722,8 @@ namespace TestStandControllerV2
         private void cancelTest()
         {
             timer.Stop();
-            pass = "Cancel";
-            passColor = yellow;
+            pass = canceledTestText;
+            passColor = canceledTest;
             passVisible = true;
             resetTester();
         }
@@ -634,8 +735,8 @@ namespace TestStandControllerV2
         private void passTest()
         {
             timer.Stop();
-            pass = "Pass";
-            passColor = green;
+            pass = passedTestText;
+            passColor = passedTest;
             passVisible = true;
             recordResult();
             resetTester();

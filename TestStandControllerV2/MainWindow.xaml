@@ -8,8 +8,8 @@
         mc:Ignorable="d" Height="768" Width="1366" ResizeMode="NoResize" Title="Pull Tester Controller" WindowState="Maximized" ScrollViewer.VerticalScrollBarVisibility="Disabled" WindowStyle="None">
     <Window.ContextMenu>
         <ContextMenu>
-            <MenuItem Header="Direct Force Entry Mode" IsCheckable="True" IsChecked="{Binding Path=directForce, Mode=TwoWay}"/>
-            <MenuItem Header="Pull-to-Break Mode" IsCheckable="True" IsChecked="{Binding Path=pullToBreak, Mode=TwoWay}"/>
+            <MenuItem Header="Direct Force Entry Mode" IsCheckable="True" IsChecked="{Binding Path=directForce, Mode=TwoWay}" Background="{Binding forceBackgroundColor}"/>
+            <MenuItem Header="Pull-to-Break Mode" IsCheckable="True" IsChecked="{Binding Path=pullToBreak, Mode=TwoWay}" Background="{Binding breakBackgroundColor}"/>
         </ContextMenu>
     </Window.ContextMenu>
     <Grid Margin="5,5,5,5">
@@ -25,10 +25,10 @@
                 <Button x:Name="goButton" Content="{Binding Path=go, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30" Height="50" Click="goButton_Click"/>
                 <Label x:Name="passLabel" Content="{Binding Path=pass, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" Visibility="{Binding Path=passVisible, Converter={StaticResource BoolToVis}, Mode=TwoWay}" Background="{Binding Path=passColor, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30" Height="50"/>
             </StackPanel>
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Visibility="{Binding Path=timeVisible, Converter={StaticResource BoolToVis}, Mode=TwoWay}">
                 <Label x:Name="timeLabel" Content="{Binding Path=timeRemaining, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30" Height="50"/>
             </StackPanel>
-            <WrapPanel Orientation="Horizontal" DockPanel.Dock="Top">
+            <WrapPanel Orientation="Horizontal" DockPanel.Dock="Top" Background="{Binding infoBackgroundColor}">
                 <Label Grid.Column="0" x:Name="label" HorizontalAlignment="Left" Margin="10,10,10,10" VerticalAlignment="Top" FontSize="30">
                     <TextBlock Grid.Column="0"  x:Name="infoArea" Text="{Binding Path=info, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" TextWrapping="WrapWithOverflow" HorizontalAlignment="Left" VerticalAlignment="Top" FontSize="30"/>
                 </Label>
