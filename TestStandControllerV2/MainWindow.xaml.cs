@@ -598,11 +598,6 @@ namespace TestStandControllerV2
             testTime = 60;
             maxValue = 0.0;
             go = readyToStart;
-            // increment today's test count if a test just ended
-            if (testInProgress && pass != canceledTestText) {
-                testCount++;
-            }
-            totalTestCount = "Total tests today: " + testCount + ", last refresh " + DateTime.Now.ToString("t");
             testInProgress = false;
             timeVisible = false;
             // reset the day and count variables if the day changed
@@ -610,7 +605,14 @@ namespace TestStandControllerV2
             {
                 testCount = 0;
                 savedTime = DateTime.Now;
+                resetResults();
             }
+            // increment today's test count if a test just ended
+            if (testInProgress && pass != canceledTestText)
+            {
+                testCount++;
+            }
+            totalTestCount = "Total tests today: " + testCount + ", last refresh " + DateTime.Now.ToString("t");
             results = printResult();
         }
 
@@ -799,13 +801,17 @@ namespace TestStandControllerV2
         /// <param name="e"></param>
         private void resetResultsButton_Click(object sender, RoutedEventArgs e)
         {
+            resetResults();
+        }
+
+        private void resetResults()
+        {
             for (int i = 0; i < resultsArray.Length; i++)
             {
                 resultsArray[i] = "";
             }
             resetUI();
         }
-
 
         /// <summary>
         /// resetTester method
