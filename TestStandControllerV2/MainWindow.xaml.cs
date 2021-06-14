@@ -50,6 +50,7 @@ namespace TestStandControllerV2
             infoBackgroundColor = blank;
             forceBackgroundColor = forceColor;
             breakBackgroundColor = breakColor;
+            pushBackgroundColor = pushColor;
             resetUI();
         }
 
@@ -67,6 +68,7 @@ namespace TestStandControllerV2
         public static Brush failedTest = new SolidColorBrush(Colors.Red);
         public static SolidColorBrush breakColor = new SolidColorBrush(Color.FromArgb(160, 255, 152, 0)); // orange
         public static SolidColorBrush forceColor = new SolidColorBrush(Color.FromArgb(160, 152, 181, 229)); // blue
+        public static SolidColorBrush pushColor = new SolidColorBrush(Color.FromArgb(160, 255, 0, 0)); // red
         public static SolidColorBrush comboColor = new SolidColorBrush(Color.FromArgb(160, 170, 102, 204)); // purpleish
         public static SolidColorBrush blank = new SolidColorBrush(Colors.White);
         private string passedTestText = "Pass";
@@ -117,6 +119,20 @@ namespace TestStandControllerV2
             {
                 _pullToBreak = value;
                 NotifyPropertyChanged("pullToBreak");
+                setMode();
+                setBackgroundColor();
+            }
+        }
+
+        // getter/setter for push testing toggle option
+        private bool _pushTesting;
+        public bool pushTesting
+        {
+            get { return _pushTesting; }
+            set
+            {
+                _pushTesting = value;
+                NotifyPropertyChanged("pushTesting");
                 setMode();
                 setBackgroundColor();
             }
@@ -279,6 +295,18 @@ namespace TestStandControllerV2
         }
 
         // getter/setter for background color selection
+        private SolidColorBrush _pushBackgroundColor;
+        public SolidColorBrush pushBackgroundColor
+        {
+            get { return _pushBackgroundColor; }
+            set
+            {
+                _pushBackgroundColor = value;
+                NotifyPropertyChanged("pushBackgroundColor");
+            }
+        }
+
+        // getter/setter for background color selection
         private SolidColorBrush _forceBackgroundColor;
         public SolidColorBrush forceBackgroundColor
         {
@@ -316,6 +344,11 @@ namespace TestStandControllerV2
             {
                 mode += 2;
             }
+            if (pushTesting)
+            {
+                mode += 4;
+            }
+
         }
 
         /// setBackgroundColor method
@@ -329,6 +362,13 @@ namespace TestStandControllerV2
         {
             switch (mode)
             {
+                case 7:
+                case 6:
+                case 5:
+                case 4:
+                    infoBackgroundColor = pushColor;
+                    break;
+
                 case 3:
                     infoBackgroundColor = comboColor;
                     break;
@@ -521,13 +561,25 @@ namespace TestStandControllerV2
                     com.Write("\\/SPH-" + (force + 1) + ".0\r");
                     Thread.Sleep(50);
 
-                    // set gauge to peak tension mode
-                    com.Write("\\/PT\r");
+                    // set gauge to peak tension/compression mode, depending on test mode
+                    if (mode < 4)
+                    {
+                        com.Write("\\/PT\r");
+                    } else
+                    {
+                        com.Write("\\/PC\r");
+                    }
                     Thread.Sleep(50);
 
-                    // begin tester movement upward
-                    com.Write("\\J\r");
-
+                    // begin tester movement
+                    // J is upward movement, K is downward movement
+                    if (mode < 4)
+                    {
+                        com.Write("\\J\r");
+                    } else
+                    {
+                        com.Write("\\K\r");
+                    }
                     info = "Testing sample at " + force + " pounds.";
                     go = readyToStop;
 
@@ -680,7 +732,14 @@ namespace TestStandControllerV2
                             Thread.Sleep(50);
                             com.Write("\\/SPH-" + (value + valueAdd) + ".0\r");
                             Thread.Sleep(50);
-                            com.Write("\\J\r");
+                            if (mode < 4)
+                            {
+                                com.Write("\\J\r");
+                            }
+                            else
+                            {
+                                com.Write("\\K\r");
+                            }
                             Thread.Sleep(50);
                         }
                     }
@@ -828,8 +887,15 @@ namespace TestStandControllerV2
             com.Write("\\H\r");
             Thread.Sleep(100);
 
-            // move downward
-            com.Write("\\K\r");
+            // move in reverse direction
+            if (mode < 4)
+            {
+                com.Write("\\K\r");
+            }
+            else
+            {
+                com.Write("\\J\r");
+            }
             Thread.Sleep(100);
 
             // set gauge to real time mode

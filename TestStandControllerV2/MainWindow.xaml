@@ -10,6 +10,7 @@
         <ContextMenu>
             <MenuItem Header="Direct Force Entry Mode" IsCheckable="True" IsChecked="{Binding Path=directForce, Mode=TwoWay}" Background="{Binding forceBackgroundColor}"/>
             <MenuItem Header="Pull-to-Break Mode" IsCheckable="True" IsChecked="{Binding Path=pullToBreak, Mode=TwoWay}" Background="{Binding breakBackgroundColor}"/>
+            <MenuItem Header="Push Testing Mode" IsCheckable="True" IsChecked="{Binding Path=pushTesting, Mode=TwoWay}" Background="{Binding pushBackgroundColor}"/>
         </ContextMenu>
     </Window.ContextMenu>
     <Grid Margin="5,5,5,5">
