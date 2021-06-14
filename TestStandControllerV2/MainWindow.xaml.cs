@@ -515,17 +515,21 @@ namespace TestStandControllerV2
                 {
 
                     case 0:
+                    case 4:
                         // standard mode
                         force = getULForce(gauge.TrimStart('0'));
                         break;
 
                     case 2:
+                    case 6:
                         // pull-to-break mode
                         force = getSAEForce(gauge.TrimStart('0'));
                         break;
 
                     case 1:
                     case 3:
+                    case 5:
+                    case 7:
                         // direct force entry modes
                         if (!double.TryParse(gauge.TrimStart('0'), out force))
                         {
@@ -724,7 +728,7 @@ namespace TestStandControllerV2
 
                     const int valueAdd = 5;
                     // if value is within valueAdd lbs of max value and mode is pull-to-break, increase pull force
-                    if (value + valueAdd > maxValue && (mode == 2 || mode == 3))
+                    if (value + valueAdd > maxValue && (mode == 2 || mode == 3 || mode == 6 || mode == 7))
                     {
                         if (value + valueAdd >= force)
                         {
@@ -749,7 +753,7 @@ namespace TestStandControllerV2
                     if (value < maxValue * 0.4 && maxValue > force / 10)
                     {
                         // check if we reached the required value in pull-to-break test modes
-                        if ((mode == 2 || mode == 3) && maxValue > force)
+                        if ((mode == 2 || mode == 3 || mode == 6 || mode == 7) && maxValue > force)
                         {
                             passTest();
                         }
@@ -818,17 +822,21 @@ namespace TestStandControllerV2
             {
 
                 case 0:
+                case 4:
                     // record pass/fail in standard test, along with gauge
                     resultsArray[0] = DateTime.Now.ToString("t") + " - " + pass + ": " + gauge.TrimStart('0') + " AWG";
                     break;
 
                 case 1:
+                case 5:
                     // record pass/fail in direct force test, along with required force
                     resultsArray[0] = DateTime.Now.ToString("t") + " - " + pass + ": " + gauge.TrimStart('0') + " lbs.";
                     break;
 
                 case 2:
                 case 3:
+                case 6:
+                case 7:
                     // record required and reached values in pull-to-break tests
                     resultsArray[0] = DateTime.Now.ToString("t") + " - " + pass + ": " + maxValue + "/" + force + " lbs.";
                     break;
